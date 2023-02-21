@@ -55,8 +55,10 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
-
+extern TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN EV */
+extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim12;
 
 /* USER CODE END EV */
 
@@ -197,6 +199,62 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f7xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles TIM3 global interrupt.
+  */
+void TIM3_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM3_IRQn 0 */
+
+	static int ld1Val = 0;
+	static int ld2Val = 0;
+	static int ld3Val = 0;
+
+	static int state = 0;
+
+	const int maxVal = 4095;
+
+	if (state == 0){
+		if (ld1Val < maxVal){
+			++ld1Val;
+		}else {
+			if (ld2Val < maxVal){
+				++ld2Val;
+			}else{
+				if (ld3Val < maxVal){
+					++ld3Val;
+				}else {
+					state = 1;
+				}
+			}
+		}
+	}else{
+		if (ld1Val > 0){
+			--ld1Val;
+		}else {
+			if (ld2Val > 0){
+				--ld2Val;
+			}else{
+				if (ld3Val > 0){
+					--ld3Val;
+				}else {
+					state = 0;
+				}
+			}
+		}
+	}
+
+	__HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, ld1Val);
+	__HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, ld2Val);
+	__HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_1, ld3Val);
+
+  /* USER CODE END TIM3_IRQn 0 */
+	HAL_TIM_IRQHandler(&htim3);
+  /* USER CODE BEGIN TIM3_IRQn 1 */
+
+  /* USER CODE END TIM3_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 

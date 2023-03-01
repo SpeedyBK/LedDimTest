@@ -212,34 +212,77 @@ void TIM3_IRQHandler(void)
 	static int ld3Val = 0;
 
 	static int state = 0;
+	static int reverse = 0;
+
+	static uint8_t shiftRegister = 0;
+	shiftRegister = shiftRegister << 1;
+
+	uint8_t butVal = (HAL_GPIO_ReadPin(USER_Btn_GPIO_Port, USER_Btn_Pin) == 1);
+	shiftRegister += butVal;
+
+	if (shiftRegister == 127){
+		reverse = (reverse + 1) % 2;
+	}
 
 	const int maxVal = 4095;
 
-	if (state == 0){
-		if (ld1Val < maxVal){
-			++ld1Val;
-		}else {
-			if (ld2Val < maxVal){
-				++ld2Val;
-			}else{
-				if (ld3Val < maxVal){
-					++ld3Val;
-				}else {
-					state = 1;
+	if (reverse == 0){
+		if (state == 0){
+			if (ld1Val < maxVal){
+				++ld1Val;
+			}else {
+				if (ld2Val < maxVal){
+					++ld2Val;
+				}else{
+					if (ld3Val < maxVal){
+						++ld3Val;
+					}else {
+						state = 1;
+					}
+				}
+			}
+		}else{
+			if (ld1Val > 0){
+				--ld1Val;
+			}else {
+				if (ld2Val > 0){
+					--ld2Val;
+				}else{
+					if (ld3Val > 0){
+						--ld3Val;
+					}else {
+						state = 0;
+					}
 				}
 			}
 		}
-	}else{
-		if (ld1Val > 0){
-			--ld1Val;
-		}else {
-			if (ld2Val > 0){
-				--ld2Val;
-			}else{
-				if (ld3Val > 0){
-					--ld3Val;
-				}else {
-					state = 0;
+	}else {
+		if (state == 0){
+			if (ld3Val < maxVal){
+				++ld3Val;
+			}else {
+				if (ld2Val < maxVal){
+					++ld2Val;
+				}else{
+					if (ld1Val < maxVal){
+						++ld1Val;
+					}else {
+						state = 1;
+					}
+				}
+			}
+		}else{
+			if (ld3Val > 0){
+				--ld3Val;
+			}else {
+				if (ld2Val > 0){
+					--ld2Val;
+				}else{
+					if (ld1Val > 0){
+						--ld1Val;
+					}else {
+						state = 0;
+					}
 				}
 			}
 		}

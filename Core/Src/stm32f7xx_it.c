@@ -59,7 +59,6 @@ extern TIM_HandleTypeDef htim3;
 /* USER CODE BEGIN EV */
 extern TIM_HandleTypeDef htim4;
 extern TIM_HandleTypeDef htim12;
-
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -293,7 +292,7 @@ void TIM3_IRQHandler(void)
 	__HAL_TIM_SET_COMPARE(&htim12, TIM_CHANNEL_1, ld3Val);
 
   /* USER CODE END TIM3_IRQn 0 */
-	HAL_TIM_IRQHandler(&htim3);
+  HAL_TIM_IRQHandler(&htim3);
   /* USER CODE BEGIN TIM3_IRQn 1 */
 
   /* USER CODE END TIM3_IRQn 1 */

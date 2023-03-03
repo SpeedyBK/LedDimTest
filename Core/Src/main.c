@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
+#include <stdio.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -67,9 +69,28 @@ TIM_HandleTypeDef htim12;
 
 UART_HandleTypeDef huart3;
 
-PCD_HandleTypeDef hpcd_USB_OTG_FS;
-
 /* USER CODE BEGIN PV */
+
+#ifdef __GNUC__
+int __io_putchar(int ch)
+#else
+int fputc(int ch, FILE *f)
+#endif
+{
+    HAL_UART_Transmit(&huart3, (uint8_t *)&ch, 1, 0xFFFF);
+
+    return ch;
+}
+#ifdef __GNUC__
+int _write(int file,char *ptr, int len)
+{
+    int DataIdx;
+    for (DataIdx= 0; DataIdx< len; DataIdx++) {
+        __io_putchar(*ptr++);
+    }
+    return len;
+}
+#endif
 
 /* USER CODE END PV */
 
@@ -77,17 +98,31 @@ PCD_HandleTypeDef hpcd_USB_OTG_FS;
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_ETH_Init(void);
-static void MX_USART3_UART_Init(void);
-static void MX_USB_OTG_FS_PCD_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM12_Init(void);
+static void MX_USART3_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+float b[3] = {1, 2, 1}; // Numerator
+float a[3] = {1, 1.69113816433026142860285290225874632597 , -0.732831786314550148730972978228237479925}; // Denominator:
+
+float filterArrayA [3] = {0, 0, 0};
+
+float IIRFilter (float filterarray[], float newSample){
+
+  filterarray[0] = (newSample*a[0]) + (a[1]*filterarray[1]) + (a[2]*filterarray[2]);
+  float out = ((b[0]*filterarray[0]) + (b[1]*filterarray[1]) + (b[2]*filterarray[2]));
+  filterarray[2] = filterarray[1];
+  filterarray[1] = filterarray[0];
+
+  return out;
+}
 
 /* USER CODE END 0 */
 
@@ -98,6 +133,10 @@ static void MX_TIM12_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	setvbuf(stdin, NULL, _IONBF, 0);
+	setvbuf(stdout, NULL, _IONBF, 0);
+	setvbuf(stderr, NULL, _IONBF, 0);
 
   /* USER CODE END 1 */
 
@@ -120,24 +159,61 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_ETH_Init();
-  MX_USART3_UART_Init();
-  MX_USB_OTG_FS_PCD_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_TIM12_Init();
+  MX_USART3_UART_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_PWM_Start_IT(&htim3, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim12, TIM_CHANNEL_1);
 
-  int ld1Val = 0;
-  int ld2Val = 0;
-  int ld3Val = 0;
-
-  int state = 0;
-
-  const int maxVal = 256;
+  int sineLUT[360] =  { 128,130,132,134,136,139,141,143,
+                        145,147,150,152,154,156,158,160,
+                        163,165,167,169,171,173,175,177,
+                        179,181,183,185,187,189,191,193,
+                        195,197,199,201,202,204,206,208,
+                        209,211,213,214,216,218,219,221,
+                        222,224,225,227,228,229,231,232,
+                        233,234,236,237,238,239,240,241,
+                        242,243,244,245,246,247,247,248,
+                        249,249,250,251,251,252,252,253,
+                        253,253,254,254,254,255,255,255,
+                        255,255,255,255,255,255,255,255,
+                        254,254,254,253,253,253,252,252,
+                        251,251,250,249,249,248,247,247,
+                        246,245,244,243,242,241,240,239,
+                        238,237,236,234,233,232,231,229,
+                        228,227,225,224,222,221,219,218,
+                        216,214,213,211,209,208,206,204,
+                        202,201,199,197,195,193,191,189,
+                        187,185,183,181,179,177,175,173,
+                        171,169,167,165,163,160,158,156,
+                        154,152,150,147,145,143,141,139,
+                        136,134,132,130,128,125,123,121,
+                        119,116,114,112,110,108,105,103,
+                        101,99,97,95,92,90,88,86,
+                        84,82,80,78,76,74,72,70,
+                        68,66,64,62,60,58,56,54,
+                        53,51,49,47,46,44,42,41,
+                        39,37,36,34,33,31,30,28,
+                        27,26,24,23,22,21,19,18,
+                        17,16,15,14,13,12,11,10,
+                        9,8,8,7,6,6,5,4,
+                        4,3,3,2,2,2,1,1,
+                        1,0,0,0,0,0,0,0,
+                        0,0,0,0,1,1,1,2,
+                        2,2,3,3,4,4,5,6,
+                        6,7,8,8,9,10,11,12,
+                        13,14,15,16,17,18,19,21,
+                        22,23,24,26,27,28,30,31,
+                        33,34,36,37,39,41,42,44,
+                        46,47,49,51,53,54,56,58,
+                        60,62,64,66,68,70,72,74,
+                        76,78,80,82,84,86,88,90,
+                        92,95,97,99,101,103,105,108,
+                        110,112,114,116,119,121,123,125 };
 
   /* USER CODE END 2 */
 
@@ -147,56 +223,16 @@ int main(void)
   {
     /* USER CODE END WHILE */
 
+	  for (int i = 0; i < 360; ++i){
+		  if (i < 180){
+			  printf("%d %d \n", (int)IIRFilter(filterArrayA, 1), 100);
+		  }else {
+			  printf("%d %d \n", (int)IIRFilter(filterArrayA, 0), 0);
+		  }
+		  HAL_Delay(25);
+	  }
+
     /* USER CODE BEGIN 3 */
-
-/*	  if (state == 0){
-		  if (ld1Val < maxVal){
-			  ++ld1Val;
-		  }else {
-			  if (ld2Val < maxVal){
-				  ++ld2Val;
-			  }else{
-				  if (ld3Val < maxVal){
-					  ++ld3Val;
-				  }else {
-					  state = 1;
-				  }
-			  }
-		  }
-	  }else{
-		  if (ld1Val > 0){
-			  --ld1Val;
-		  }else {
-			  if (ld2Val > 0){
-				  --ld2Val;
-			  }else{
-				  if (ld3Val > 0){
-					  --ld3Val;
-				  }else {
-					  state = 0;
-				  }
-			  }
-		  }
-	  }
-
-	  for (int i = 0; i < maxVal; ++i){
-		  if (ld1Val > i){
-			  HAL_GPIO_WritePin(GPIOB, LD1_Pin, 1);
-		  }else {
-			  HAL_GPIO_WritePin(GPIOB, LD1_Pin, 0);
-		  }
-		  if (ld2Val > i){
-			  HAL_GPIO_WritePin(GPIOB, LD2_Pin, 1);
-		  }else {
-			  HAL_GPIO_WritePin(GPIOB, LD2_Pin, 0);
-		  }
-		  if (ld3Val > i){
-			  HAL_GPIO_WritePin(GPIOB, LD3_Pin, 1);
-		  }else {
-			  HAL_GPIO_WritePin(GPIOB, LD3_Pin, 0);
-		  }
-	  }
-*/
 
   }
   /* USER CODE END 3 */
@@ -506,41 +542,6 @@ static void MX_USART3_UART_Init(void)
 }
 
 /**
-  * @brief USB_OTG_FS Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USB_OTG_FS_PCD_Init(void)
-{
-
-  /* USER CODE BEGIN USB_OTG_FS_Init 0 */
-
-  /* USER CODE END USB_OTG_FS_Init 0 */
-
-  /* USER CODE BEGIN USB_OTG_FS_Init 1 */
-
-  /* USER CODE END USB_OTG_FS_Init 1 */
-  hpcd_USB_OTG_FS.Instance = USB_OTG_FS;
-  hpcd_USB_OTG_FS.Init.dev_endpoints = 6;
-  hpcd_USB_OTG_FS.Init.speed = PCD_SPEED_FULL;
-  hpcd_USB_OTG_FS.Init.dma_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.phy_itface = PCD_PHY_EMBEDDED;
-  hpcd_USB_OTG_FS.Init.Sof_enable = ENABLE;
-  hpcd_USB_OTG_FS.Init.low_power_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.lpm_enable = DISABLE;
-  hpcd_USB_OTG_FS.Init.vbus_sensing_enable = ENABLE;
-  hpcd_USB_OTG_FS.Init.use_dedicated_ep1 = DISABLE;
-  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USB_OTG_FS_Init 2 */
-
-  /* USER CODE END USB_OTG_FS_Init 2 */
-
-}
-
-/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -578,6 +579,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(USB_OverCurrent_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : USB_SOF_Pin USB_ID_Pin USB_DM_Pin USB_DP_Pin */
+  GPIO_InitStruct.Pin = USB_SOF_Pin|USB_ID_Pin|USB_DM_Pin|USB_DP_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF10_OTG_FS;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : USB_VBUS_Pin */
+  GPIO_InitStruct.Pin = USB_VBUS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(USB_VBUS_GPIO_Port, &GPIO_InitStruct);
 
 }
 
